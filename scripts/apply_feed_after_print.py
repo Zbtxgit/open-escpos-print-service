@@ -100,7 +100,8 @@ replace_once(
     '        versionName = "1.3.1-feed1"\n',
 )
 
-# GitHub's standard Android SDK currently provides API 36; this is enough for the test build.
+# GitHub's standard Android SDK currently provides API 36. Core 1.19 needs API 37,
+# so pin AndroidX Core to 1.17, which is compatible with API 36 and is enough for this app.
 replace_once(
     "app/build.gradle.kts",
     "    compileSdk = 37\n",
@@ -110,6 +111,11 @@ replace_once(
     "app/build.gradle.kts",
     '    buildToolsVersion = "37.0.0"\n    compileSdkMinor = 1\n',
     '    buildToolsVersion = "36.0.0"\n',
+)
+replace_once(
+    "gradle/libs.versions.toml",
+    'coreKtx = "1.19.0"\n',
+    'coreKtx = "1.17.0"\n',
 )
 
 # Make the custom build easy to distinguish in Android settings / print-service selection.
