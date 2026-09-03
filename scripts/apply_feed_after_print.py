@@ -62,11 +62,35 @@ replace_once(
     custom_fields_block,
 )
 
-# New printers default to 2 cm feed and crisp black/white printing.
+# GZM8022-friendly defaults for newly detected/created printers.
+defaults_old = '''        .setEnabled(false)
+        .setDriver(Driver.ESC_POS)
+        .setDpi(203)
+        .setWidth(5.0F)
+        .setHeight(8.0F)
+        .setMarginLeft(0.0F)
+        .setMarginTop(0.0F)
+        .setMarginRight(0.0F)
+        .setMarginBottom(0.0F)
+        .setCut(true)
+'''
+defaults_new = '''        .setEnabled(false)
+        .setDriver(Driver.ESC_POS)
+        .setDpi(203)
+        .setWidth(7.2F)
+        .setHeight(8.0F)
+        .setMarginLeft(0.2F)
+        .setMarginTop(0.3F)
+        .setMarginRight(0.2F)
+        .setMarginBottom(0.3F)
+        .setFeedAfterPrint(3.0F)
+        .setGrayscalePrinting(false)
+        .setCut(true)
+'''
 replace_once(
     "app/src/main/java/com/farminos/print/Ui.kt",
-    "        .setMarginBottom(0.0F)\n        .setCut(true)\n",
-    "        .setMarginBottom(0.0F)\n        .setFeedAfterPrint(2.0F)\n        .setGrayscalePrinting(false)\n        .setCut(true)\n",
+    defaults_old,
+    defaults_new,
 )
 
 # 3) Use the selectable grayscale mode when converting bitmaps for ESC/POS.
