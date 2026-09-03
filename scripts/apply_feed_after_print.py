@@ -13,14 +13,14 @@ def replace_once(path: str, old: str, new: str) -> None:
     print(f"{path}: patched")
 
 
-# 1) Persist the new per-printer setting. Field 18 is new and keeps protobuf compatibility.
+# 1) Persist the new per-printer settings. New protobuf fields keep backward compatibility.
 replace_once(
     "app/src/main/proto/settings.proto",
     "  bool skip_white_lines_at_page_end = 17;\n",
-    "  bool skip_white_lines_at_page_end = 17;\n  float feed_after_print = 18;\n",
+    "  bool skip_white_lines_at_page_end = 17;\n  float feed_after_print = 18;\n  bool grayscale_printing = 19;\n",
 )
 
-# 2) Add the setting to the UI immediately after the margin settings.
+# 2) Add Feed after print + grayscale toggle immediately after the margin settings.
 bottom_margin_block = '''                LabelledTextField(
                     label = "Bottom margin (cm)",
                     value = settings.marginBottom.toString(),
@@ -34,7 +34,7 @@ bottom_margin_block = '''                LabelledTextField(
                     },
                 )
 '''
-feed_field_block = bottom_margin_block + '''                LabelledTextField(
+custom_fields_block = bottom_margin_block + '''                LabelledTextField(
                     label = "Feed after print (cm)",
                     value = settings.feedAfterPrint.toString(),
                     transform = { cm ->
@@ -46,21 +46,37 @@ feed_field_block = bottom_margin_block + '''                LabelledTextField(
                         }
                     },
                 )
+                LabelledSwitch(
+                    label = "Grayscale printing",
+                    checked = settings.grayscalePrinting,
+                    onCheckedChange = { grayscale ->
+                        context.updatePrinterSetting(uuid = uuid) {
+                            it.setGrayscalePrinting(grayscale)
+                        }
+                    },
+                )
 '''
 replace_once(
     "app/src/main/java/com/farminos/print/Ui.kt",
     bottom_margin_block,
-    feed_field_block,
+    custom_fields_block,
 )
 
-# New printers default to 2 cm. Existing protobuf data safely defaults to 0 until edited.
+# New printers default to 2 cm feed and crisp black/white printing.
 replace_once(
     "app/src/main/java/com/farminos/print/Ui.kt",
     "        .setMarginBottom(0.0F)\n        .setCut(true)\n",
-    "        .setMarginBottom(0.0F)\n        .setFeedAfterPrint(2.0F)\n        .setCut(true)\n",
+    "        .setMarginBottom(0.0F)\n        .setFeedAfterPrint(2.0F)\n        .setGrayscalePrinting(false)\n        .setCut(true)\n",
 )
 
-# 3) Feed the requested physical distance after the bitmap and before cut/reset.
+# 3) Use the selectable grayscale mode when converting bitmaps for ESC/POS.
+replace_once(
+    "app/src/main/java/com/farminos/print/Drivers.kt",
+    "                commands.printImage(EscPosPrinterCommands.bitmapToBytes(it, true))\n",
+    "                commands.printImage(EscPosPrinterCommands.bitmapToBytes(it, settings.grayscalePrinting))\n",
+)
+
+# Feed the requested physical distance after the bitmap and before cut/reset.
 # DantSu feedPaper() accepts 0..255 printer dots per command, so split longer feeds into chunks.
 driver_anchor = '''            delayForLength(pixelsToCm(heightPx, settings.dpi))
         }
@@ -97,7 +113,7 @@ replace_once(
 replace_once(
     "app/build.gradle.kts",
     '        versionName = "1.3.1"\n',
-    '        versionName = "1.3.1-feed1"\n',
+    '        versionName = "1.3.1-feed2"\n',
 )
 
 # GitHub's standard Android SDK currently provides API 36. Core 1.19 needs API 37,
@@ -125,4 +141,4 @@ replace_once(
     '<string name="app_name">Open ESC/POS Print Service - Feed</string>',
 )
 
-print("Feed-after-print patch applied successfully.")
+print("Feed-after-print + grayscale patch applied successfully.")
