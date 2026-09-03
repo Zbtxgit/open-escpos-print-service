@@ -61,7 +61,7 @@ replace_once(
 )
 
 # 3) Feed the requested physical distance after the bitmap and before cut/reset.
-# DantSu feedPaper() accepts printer dots, so convert cm using the configured DPI.
+# DantSu feedPaper() accepts 0..255 printer dots per command, so split longer feeds into chunks.
 driver_anchor = '''            delayForLength(pixelsToCm(heightPx, settings.dpi))
         }
         if (settings.cut) {
@@ -69,14 +69,16 @@ driver_anchor = '''            delayForLength(pixelsToCm(heightPx, settings.dpi)
 driver_replacement = '''            delayForLength(pixelsToCm(heightPx, settings.dpi))
         }
         if (settings.feedAfterPrint > 0.0F) {
-            val feedDots = Math.round((settings.feedAfterPrint / 2.54F) * settings.dpi)
-            if (feedDots > 0) {
+            var remainingFeedDots = Math.round((settings.feedAfterPrint / 2.54F) * settings.dpi)
+            while (remainingFeedDots > 0) {
+                val feedChunk = Math.min(remainingFeedDots, 255)
                 disconnectOnError {
-                    commands.feedPaper(feedDots)
+                    commands.feedPaper(feedChunk)
                 }
-                // Let the printer physically advance before a cut or reset command follows.
-                delayForLength(settings.feedAfterPrint)
+                remainingFeedDots -= feedChunk
             }
+            // Let the printer physically advance before a cut or reset command follows.
+            delayForLength(settings.feedAfterPrint)
         }
         if (settings.cut) {
 '''
